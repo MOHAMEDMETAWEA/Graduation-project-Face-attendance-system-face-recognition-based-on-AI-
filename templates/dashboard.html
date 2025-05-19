@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <meta http-equiv="refresh" content="5;url={{ url_for('index') }}">
+    <style>
+        .dashboard-content {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.1);
+            margin: 25px 0;
+        }
+        .status-message {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+            font-weight: 500;
+        }
+        .login-status {
+            background-color: #e8f5e9;
+            border-left: 5px solid #2e7d32;
+            color: #1b5e20;
+        }
+        .logout-status {
+            background-color: #ffebee;
+            border-left: 5px solid #c62828;
+            color: #b71c1c;
+        }
+        .countdown {
+            margin: 25px 0;
+            padding: 12px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 0.95em;
+            color: #616161;
+        }
+        .time-display {
+            margin: 25px 0;
+            font-size: 1.1em;
+        }
+        .time-display span {
+            font-weight: 600;
+            color: #212121;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        {% if just_logged_out %}
+            <h1>Attendance System</h1>
+        {% else %}
+            <h1>Welcome, {{ username }}!</h1>
+        {% endif %}
+        
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="alert" id="flash-message">
+                    {% for message in messages %}
+                        <p>{{ message }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        
+        <div class="dashboard-content">
+            <h2>Attendance Dashboard</h2>
+            
+            {% if just_logged_in %}
+                <div class="status-message login-status">
+                    ✔️ You are successfully logged in
+                </div>
+            {% elif just_logged_out %}
+                <div class="status-message logout-status">
+                    ✔️ You have been successfully logged out
+                </div>
+            {% endif %}
+            
+            <div class="time-display">
+                <p>⏱️ <strong>Current Time:</strong> <span id="current-time"></span></p>
+                <p>📅 <strong>Today's Date:</strong> <span id="current-date"></span></p>
+            </div>
+            
+            <div class="countdown" id="countdown">
+                Redirecting to home page in <span id="countdown-number">5</span> seconds...
+            </div>
+        </div>
+        
+        <div class="button-group">
+            {% if not just_logged_out %}
+                <a href="{{ url_for('logout') }}" class="btn btn-red">Logout</a>
+            {% endif %}
+            <a href="{{ url_for('index') }}" class="btn btn-gray">Home Now</a>
+        </div>
+    </div>
+    
+    <script>
+        // Update time display
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = now.toLocaleTimeString();
+            document.getElementById('current-date').textContent = now.toLocaleDateString();
+            requestAnimationFrame(updateClock);
+        }
+        updateClock();
+        
+        // Countdown timer
+        let seconds = 5;
+        const countdownElement = document.getElementById('countdown-number');
+        const countdownInterval = setInterval(() => {
+            seconds--;
+            countdownElement.textContent = seconds;
+            if (seconds <= 0) {
+                clearInterval(countdownInterval);
+                window.location.href = "{{ url_for('index') }}";
+            }
+        }, 1000);
+        
+        // Auto-hide flash messages
+        const flashMessage = document.getElementById('flash-message');
+        if (flashMessage) {
+            setTimeout(() => {
+                flashMessage.style.transition = 'opacity 0.5s ease';
+                flashMessage.style.opacity = '0';
+                setTimeout(() => flashMessage.remove(), 500);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

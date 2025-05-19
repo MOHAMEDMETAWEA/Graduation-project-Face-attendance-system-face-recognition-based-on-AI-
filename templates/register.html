@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register New User</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        /* Virtual Keyboard Styles */
+        .keyboard-container {
+            display: none;
+            width: 100%;
+            background-color: #f0f0f0;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .keyboard-row {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+        
+        .key {
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            margin: 4px;
+            padding: 15px;
+            min-width: 40px;
+            font-size: 18px;
+            text-align: center;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.1s ease;
+        }
+        
+        .key:hover {
+            background-color: #e0e0e0;
+            transform: scale(1.05);
+        }
+        
+        .key:active {
+            background-color: #d0d0d0;
+            transform: scale(0.95);
+        }
+        
+        .key-space {
+            width: 300px;
+        }
+        
+        .key-backspace, .key-shift, .key-close {
+            min-width: 80px;
+            font-size: 16px;
+        }
+        
+        .key-shift.active {
+            background-color: #4CAF50;
+            color: white;
+            border-color: #4CAF50;
+        }
+        
+        .key-shift.active:hover {
+            background-color: #45a049;
+        }
+
+        /* Added styles for smaller camera frame */
+        .video-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #video {
+            max-width: 320px;
+            max-height: 240px;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+            margin-bottom: 10px;
+        }
+
+        /* Removed preview container styles since we're removing it */
+        
+        .webcam-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .capture-container {
+            margin-top: 10px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Register New User</h1>
+        
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="alert">
+                    {% for message in messages %}
+                        <p>{{ message }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        
+        <div class="webcam-container">
+            <div class="video-container">
+                <!-- Camera feed image from Pi Camera -->
+                <img id="video" src="{{ url_for('get_frame') }}" alt="Camera Feed">
+                <canvas id="canvas" style="display:none;"></canvas>
+                <div class="capture-container">
+                    <button id="capture-btn" class="btn btn-green">Capture Image</button>
+                </div>
+            </div>
+            <!-- Removed preview container -->
+        </div>
+        
+        <form id="register-form" action="{{ url_for('register') }}" method="post" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="name">Username:</label>
+                <input type="text" id="name" name="name" required>
+            </div>
+            
+            <!-- Virtual Keyboard -->
+            <div id="virtual-keyboard" class="keyboard-container">
+                <div class="keyboard-row">
+                    <div class="key">1</div>
+                    <div class="key">2</div>
+                    <div class="key">3</div>
+                    <div class="key">4</div>
+                    <div class="key">5</div>
+                    <div class="key">6</div>
+                    <div class="key">7</div>
+                    <div class="key">8</div>
+                    <div class="key">9</div>
+                    <div class="key">0</div>
+                </div>
+                <div class="keyboard-row">
+                    <div class="key">q</div>
+                    <div class="key">w</div>
+                    <div class="key">e</div>
+                    <div class="key">r</div>
+                    <div class="key">t</div>
+                    <div class="key">y</div>
+                    <div class="key">u</div>
+                    <div class="key">i</div>
+                    <div class="key">o</div>
+                    <div class="key">p</div>
+                </div>
+                <div class="keyboard-row">
+                    <div class="key">a</div>
+                    <div class="key">s</div>
+                    <div class="key">d</div>
+                    <div class="key">f</div>
+                    <div class="key">g</div>
+                    <div class="key">h</div>
+                    <div class="key">j</div>
+                    <div class="key">k</div>
+                    <div class="key">l</div>
+                </div>
+                <div class="keyboard-row">
+                    <div class="key key-shift">Shift</div>
+                    <div class="key">z</div>
+                    <div class="key">x</div>
+                    <div class="key">c</div>
+                    <div class="key">v</div>
+                    <div class="key">b</div>
+                    <div class="key">n</div>
+                    <div class="key">m</div>
+                    <div class="key key-backspace">⌫</div>
+                </div>
+                <div class="keyboard-row">
+                    <div class="key key-space">Space</div>
+                    <div class="key key-close">Close</div>
+                </div>
+            </div>
+            
+            <input type="file" id="file" name="file" style="display:none;">
+            
+            <div class="button-group">
+                <button type="submit" class="btn btn-green" id="submit-btn" disabled>Register</button>
+                <a href="{{ url_for('index') }}" class="btn btn-red">Cancel</a>
+            </div>
+        </form>
+    </div>
+    
+    <script>
+        // Variable to control camera feed refresh
+        let refreshCamera = true;
+        
+        // Pi Camera feed refresh function
+        function refreshCameraFeed() {
+            if (refreshCamera) {
+                const videoFeed = document.getElementById('video');
+                videoFeed.src = "{{ url_for('get_frame') }}?" + new Date().getTime();
+                setTimeout(refreshCameraFeed, 100);
+            }
+        }
+        
+        // Start camera feed refresh
+        refreshCameraFeed();
+        
+        // Capture button and form handling
+        document.addEventListener('DOMContentLoaded', function() {
+            const captureBtn = document.getElementById('capture-btn');
+            const submitBtn = document.getElementById('submit-btn');
+            const videoFeed = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            const fileInput = document.getElementById('file');
+            
+            captureBtn.addEventListener('click', function() {
+                // Stop camera feed refresh
+                refreshCamera = false;
+                
+                // Set up canvas with correct dimensions
+                const ctx = canvas.getContext('2d');
+                canvas.width = videoFeed.naturalWidth || 320;
+                canvas.height = videoFeed.naturalHeight || 240;
+                
+                // Draw the current frame to canvas
+                ctx.drawImage(videoFeed, 0, 0, canvas.width, canvas.height);
+                
+                // Convert to blob for form submission
+                canvas.toBlob(function(blob) {
+                    // Create a File object
+                    const file = new File([blob], "captured_image.jpg", { type: "image/jpeg" });
+                    
+                    // Create a DataTransfer object to set the file input value
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(file);
+                    fileInput.files = dataTransfer.files;
+                    
+                    // Enable submit button
+                    submitBtn.disabled = false;
+                    
+                    // Change capture button text and disable it
+                    captureBtn.textContent = "Image Captured";
+                    captureBtn.disabled = true;
+                }, 'image/jpeg');
+            });
+            
+            // Virtual Keyboard functionality
+            const nameInput = document.getElementById('name');
+            const keyboard = document.getElementById('virtual-keyboard');
+            let shiftEnabled = false;
+            let shiftButton = null;
+            
+            // Show keyboard when input is clicked
+            nameInput.addEventListener('click', function() {
+                keyboard.style.display = 'block';
+                shiftButton = document.querySelector('.key-shift');
+            });
+            
+            // Handle key presses
+            keyboard.addEventListener('click', function(e) {
+                if (e.target.classList.contains('key')) {
+                    const key = e.target.textContent;
+                    
+                    if (key === 'Shift') {
+                        shiftEnabled = !shiftEnabled;
+                        e.target.classList.toggle('active');
+                        toggleShift();
+                    } else if (key === '⌫') {
+                        nameInput.value = nameInput.value.slice(0, -1);
+                    } else if (key === 'Space') {
+                        nameInput.value += ' ';
+                    } else if (key === 'Close') {
+                        keyboard.style.display = 'none';
+                        if (shiftEnabled) {
+                            shiftEnabled = false;
+                            if (shiftButton) {
+                                shiftButton.classList.remove('active');
+                            }
+                            toggleShift();
+                        }
+                    } else {
+                        nameInput.value += shiftEnabled ? key.toUpperCase() : key;
+                        if (shiftEnabled) {
+                            shiftEnabled = false;
+                            if (shiftButton) {
+                                shiftButton.classList.remove('active');
+                            }
+                            toggleShift();
+                        }
+                    }
+                    
+                    // Keep focus on input
+                    nameInput.focus();
+                }
+            });
+            
+            // Toggle shift function
+            function toggleShift() {
+                const keys = document.querySelectorAll('.key:not(.key-shift):not(.key-backspace):not(.key-space):not(.key-close)');
+                keys.forEach(key => {
+                    if (/^[a-z]$/.test(key.textContent)) {
+                        key.textContent = shiftEnabled ? key.textContent.toUpperCase() : key.textContent.toLowerCase();
+                    }
+                });
+            }
+            
+            // Close keyboard when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!keyboard.contains(e.target) && e.target !== nameInput) {
+                    keyboard.style.display = 'none';
+                    if (shiftEnabled) {
+                        shiftEnabled = false;
+                        if (shiftButton) {
+                            shiftButton.classList.remove('active');
+                        }
+                        toggleShift();
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

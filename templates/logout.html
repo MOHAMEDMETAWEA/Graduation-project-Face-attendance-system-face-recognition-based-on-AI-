@@ -1,0 +1,101 @@
+<!-- templates/logout.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logout</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        /* Style for the smaller camera frame */
+        #video {
+            width: 320px;
+            height: auto;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+        }
+        .webcam-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>User Logout</h1>
+        
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="alert">
+                    {% for message in messages %}
+                        <p>{{ message }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        
+        <div class="webcam-container">
+            <!-- Camera feed from Pi Camera -->
+            <img id="video" src="{{ url_for('get_frame') }}" alt="Camera Feed">
+            <canvas id="canvas" style="display:none;"></canvas>
+        </div>
+        
+        <form id="logout-form" action="{{ url_for('logout') }}" method="post" enctype="multipart/form-data">
+            <input type="file" id="file" name="file" style="display:none;">
+            
+            <div class="button-group">
+                <button type="button" class="btn btn-green" id="logout-btn">Logout</button>
+                <a href="{{ url_for('index') }}" class="btn btn-red">Cancel</a>
+            </div>
+        </form>
+    </div>
+    
+    <script>
+        // Pi Camera feed refresh
+        setInterval(function() {
+            const videoFeed = document.getElementById('video');
+            videoFeed.src = "{{ url_for('get_frame') }}?" + new Date().getTime();
+        }, 100);
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const logoutBtn = document.getElementById('logout-btn');
+            const form = document.getElementById('logout-form');
+            const canvas = document.getElementById('canvas');
+            const fileInput = document.getElementById('file');
+            
+            logoutBtn.addEventListener('click', function() {
+                // Get current frame from Pi Camera
+                const videoFeed = document.getElementById('video');
+                
+                // Set up canvas with correct dimensions
+                const ctx = canvas.getContext('2d');
+                canvas.width = videoFeed.naturalWidth || 640;
+                canvas.height = videoFeed.naturalHeight || 480;
+                
+                // Draw the current frame to canvas
+                ctx.drawImage(videoFeed, 0, 0, canvas.width, canvas.height);
+                
+                // Convert to blob for form submission
+                canvas.toBlob(function(blob) {
+                    // Create a File object
+                    const file = new File([blob], "captured_image.jpg", { type: "image/jpeg" });
+                    
+                    // Create a DataTransfer object to set the file input value
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(file);
+                    fileInput.files = dataTransfer.files;
+                    
+                    // Show loading state
+                    logoutBtn.textContent = "Processing...";
+                    logoutBtn.disabled = true;
+                    
+                    // Submit the form
+                    form.submit();
+                }, 'image/jpeg');
+            });
+        });
+    </script>
+</body>
+</html>

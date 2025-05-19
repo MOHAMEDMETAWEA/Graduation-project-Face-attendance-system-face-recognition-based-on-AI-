@@ -1,0 +1,174 @@
+<!-- templates/test_anti_spoofing.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Anti-Spoofing</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .result-box {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+        }
+        .result-real {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .result-fake {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .upload-section, .webcam-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        h2 {
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Anti-Spoofing Test Tool</h1>
+        
+        <div class="upload-section">
+            <h2>Test with Uploaded Image</h2>
+            <form id="upload-form" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="file-upload">Select an image to test:</label>
+                    <input type="file" id="file-upload" name="file" accept="image/*">
+                </div>
+                <button type="submit" class="btn btn-green">Test Image</button>
+            </form>
+            <div id="upload-result" class="result-box" style="display: none;"></div>
+        </div>
+        
+        <div class="webcam-section">
+            <h2>Test with Pi Camera</h2>
+            <div class="webcam-container">
+                <div class="video-container">
+                    <!-- Replace video with image from Pi Camera -->
+                    <img id="video" src="{{ url_for('get_frame') }}" alt="Camera Feed">
+                    <canvas id="canvas" style="display:none;"></canvas>
+                    <div class="capture-container">
+                        <button id="capture-btn" class="btn btn-green">Capture Image</button>
+                    </div>
+                </div>
+                
+                <div class="preview-container">
+                    <img id="preview" src="{{ url_for('static', filename='img/placeholder.png') }}" alt="Preview">
+                </div>
+            </div>
+            <div id="webcam-result" class="result-box" style="display: none;"></div>
+        </div>
+        
+        <div class="button-group">
+            <a href="{{ url_for('index') }}" class="btn btn-gray">Back to Home</a>
+        </div>
+    </div>
+    
+    <script>
+        // Pi Camera feed refresh
+        setInterval(function() {
+            const videoFeed = document.getElementById('video');
+            videoFeed.src = "{{ url_for('get_frame') }}?" + new Date().getTime();
+        }, 100);
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const canvas = document.getElementById('canvas');
+            const captureBtn = document.getElementById('capture-btn');
+            const preview = document.getElementById('preview');
+            const uploadForm = document.getElementById('upload-form');
+            const uploadResult = document.getElementById('upload-result');
+            const webcamResult = document.getElementById('webcam-result');
+            
+            // Handle file upload form submission
+            uploadForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const fileInput = document.getElementById('file-upload');
+                if (!fileInput.files.length) {
+                    alert('Please select a file first');
+                    return;
+                }
+                
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+                
+                fetch('/test_anti_spoofing', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    uploadResult.style.display = 'block';
+                    if (data.is_real_face) {
+                        uploadResult.className = 'result-box result-real';
+                        uploadResult.textContent = '✅ ' + data.message;
+                    } else {
+                        uploadResult.className = 'result-box result-fake';
+                        uploadResult.textContent = '❌ ' + data.message;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    uploadResult.style.display = 'block';
+                    uploadResult.className = 'result-box result-fake';
+                    uploadResult.textContent = '❌ Error testing image';
+                });
+            });
+            
+            // Capture image when the button is clicked
+            captureBtn.addEventListener('click', function() {
+                // Get current frame from Pi Camera
+                const videoFeed = document.getElementById('video');
+                
+                // Set up canvas with correct dimensions
+                const ctx = canvas.getContext('2d');
+                canvas.width = videoFeed.naturalWidth || 640;
+                canvas.height = videoFeed.naturalHeight || 480;
+                
+                // Draw the current frame to canvas
+                ctx.drawImage(videoFeed, 0, 0, canvas.width, canvas.height);
+                
+                // Display preview
+                preview.src = canvas.toDataURL('image/jpeg');
+                
+                // Convert to blob and send to server
+                canvas.toBlob(function(blob) {
+                    const formData = new FormData();
+                    formData.append('file', blob, 'picamera-capture.jpg');
+                    
+                    fetch('/test_anti_spoofing', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        webcamResult.style.display = 'block';
+                        if (data.is_real_face) {
+                            webcamResult.className = 'result-box result-real';
+                            webcamResult.textContent = '✅ ' + data.message;
+                        } else {
+                            webcamResult.className = 'result-box result-fake';
+                            webcamResult.textContent = '❌ ' + data.message;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        webcamResult.style.display = 'block';
+                        webcamResult.className = 'result-box result-fake';
+                        webcamResult.textContent = '❌ Error testing image';
+                    });
+                }, 'image/jpeg');
+            });
+        });
+    </script>
+</body>
+</html>
